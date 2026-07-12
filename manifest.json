@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Auto Life Logger",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Track your browsing habits, beat distraction loops, and build lasting focus. 100% private - all data stays on your device.",
 
   "permissions": [

@@ -1,6 +1,6 @@
 {
   "name": "auto-life-logger-extension",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "description": "Local-first Chrome extension for browsing habit tracking and focus interventions.",
   "scripts": {
