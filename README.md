@@ -65,4 +65,4 @@ Created and maintained by [Tini Flegar](https://github.com/flegardev) (`flegarde
 
 ---
 
-Made by FlegarTech. If this project helped you, you can [support development](https://paypal.me/TiniFlegar).
+Made by Tini Flegar. If this project helped you, you can [support development](https://paypal.me/TiniFlegar).
