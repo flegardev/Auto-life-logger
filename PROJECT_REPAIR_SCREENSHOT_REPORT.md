@@ -3,7 +3,7 @@
 ## Project
 
 - Name: Auto Life Logger
-- Path: `C:\Users\tinif\Documents\auto-life-logger-main\auto-life-logger-main`
+- Path: repository root (the directory containing `manifest.json`)
 - Type: Plain Manifest V3 Chrome extension
 
 ## What Was Broken or Missing
@@ -95,7 +95,7 @@ _final_desktop_screenshots/03-detail-or-secondary-screen.png
 ## Exact Commands to Run Again
 
 ```powershell
-cd C:\Users\tinif\Documents\auto-life-logger-main\auto-life-logger-main
+# Run these commands from the repository root.
 npm.cmd install
 npm.cmd run validate
 npm.cmd run screenshots:final
@@ -106,4 +106,4 @@ To run manually in Chrome:
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
 3. Click `Load unpacked`.
-4. Select `C:\Users\tinif\Documents\auto-life-logger-main\auto-life-logger-main`.
+4. Select the repository root (the directory containing `manifest.json`).

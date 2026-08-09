@@ -34,7 +34,7 @@ npm run package
 
 `npm run lint` performs manifest, path, syntax, and security-pattern validation.
 
-`npm run test:chrome` starts Chrome or Edge with a temporary profile and loads the extension unpacked (this is what CI runs).
+`npm run test:chrome` starts Chrome or Edge with a temporary profile and loads the extension unpacked. CI runs this check together with the unit and Playwright UI suites before packaging.
 
 `npm run test:ui` runs the Playwright UI smoke suite. Install the browser first with `npx playwright install chromium`. On a Linux distribution without a Playwright-bundled Chromium build, drive your system Chrome instead: `PW_CHANNEL=chrome npm run test:ui`.
 
@@ -56,6 +56,12 @@ On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`, for example `npm.cmd r
 ## Privacy
 
 The extension is designed to keep browsing data local. Domain lists, sessions, scores, summaries, strict-mode state, and backups are stored on the device through Chrome extension storage.
+
+Deleting all data also ends the active in-memory tracking session and clears temporary pattern, warning, and Strict Mode bypass state. This prevents a later tab or window event from restoring history that the user deleted.
+
+## Author
+
+Created and maintained by [Tini Flegar](https://github.com/flegardev) (`flegardev@gmail.com`). FlegarTech is the project brand used in the extension materials.
 
 ---
 
