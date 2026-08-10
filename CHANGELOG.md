@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Made data deletion an ordered privacy reset that also forgets the active session and temporary in-memory tracking state.
+- Added regression coverage for both delayed and concurrent session writes after deletion.
+- Added accessible names to settings toggles and form fields, plus polite live status regions.
+- Added repository and maintainer metadata and removed a machine-specific path from public documentation.
+- Expanded CI to run unit, unpacked-extension, and responsive Playwright checks before packaging.
+
 ## 2.1.0 - Local Quality Pass
 
 - Added Chrome options page.

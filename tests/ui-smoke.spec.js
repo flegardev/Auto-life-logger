@@ -231,8 +231,15 @@ test('popup and options render without console errors', async ({ page }) => {
 
   await page.goto(pageUrl('options.html'));
   await expect(page.getByRole('heading', { name: 'Auto Life Logger Options' })).toBeVisible();
+  await expect(page.getByLabel('Pause tracking until')).toBeVisible();
+  await expect(page.locator('#notificationsEnabled')).toHaveAccessibleName('Notifications');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Settings saved.')).toBeVisible();
+
+  await page.goto(pageUrl('dashboard.html'));
+  await page.getByRole('button', { name: /Settings/ }).click();
+  await expect(page.getByLabel('Warning threshold (min)')).toBeVisible();
+  await expect(page.locator('#sStrict')).toHaveAccessibleName('Enable Strict Mode');
 
   expect(errors).toEqual([]);
 });

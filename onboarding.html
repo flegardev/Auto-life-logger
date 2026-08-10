@@ -23,9 +23,9 @@
     <div class="panel">
       <div class="panel-hd">Focus Rules</div>
       <div class="toggle-list">
-        <div class="toggle-row"><div><div class="tl">Notifications</div><div class="td">Show browser alerts</div></div><label class="toggle"><input type="checkbox" id="notificationsEnabled" checked><span class="track"></span></label></div>
-        <div class="toggle-row"><div><div class="tl">On-page interventions</div><div class="td">Show focus overlays</div></div><label class="toggle"><input type="checkbox" id="interventionEnabled" checked><span class="track"></span></label></div>
-        <div class="toggle-row"><div><div class="tl">Strict Mode</div><div class="td">Block sites after ignored warnings</div></div><label class="toggle"><input type="checkbox" id="strictEnabled"><span class="track"></span></label></div>
+        <div class="toggle-row"><div><div class="tl">Notifications</div><div class="td">Show browser alerts</div></div><label class="toggle"><input type="checkbox" id="notificationsEnabled" aria-label="Notifications" checked><span class="track"></span></label></div>
+        <div class="toggle-row"><div><div class="tl">On-page interventions</div><div class="td">Show focus overlays</div></div><label class="toggle"><input type="checkbox" id="interventionEnabled" aria-label="On-page interventions" checked><span class="track"></span></label></div>
+        <div class="toggle-row"><div><div class="tl">Strict Mode</div><div class="td">Block sites after ignored warnings</div></div><label class="toggle"><input type="checkbox" id="strictEnabled" aria-label="Strict Mode"><span class="track"></span></label></div>
       </div>
       <div class="form-grid">
         <label class="form-group"><span class="fl">Warn after minutes</span><input class="fi" type="number" id="warningThresholdMins" min="1" value="30"></label>
@@ -37,7 +37,7 @@
         <button class="btn-primary" id="finishBtn">Start Tracking</button>
         <button class="btn-secondary" id="optionsBtn">Advanced Options</button>
       </div>
-      <div class="insight-box" id="statusBox" style="display:none;margin-top:12px"></div>
+      <div class="insight-box" id="statusBox" role="status" aria-live="polite" style="display:none;margin-top:12px"></div>
     </div>
   </section>
 </main>
