@@ -14,6 +14,11 @@ function exists(rel) {
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 if (manifest.manifest_version !== 3) problems.push('manifest.json must use Manifest V3.');
+for (const size of ['16', '32', '48', '128']) {
+  if (!manifest.icons?.[size] || !manifest.action?.default_icon?.[size]) {
+    problems.push(`Manifest must define a ${size}px extension and action icon.`);
+  }
+}
 
 const requiredPaths = [
   manifest.background?.service_worker,

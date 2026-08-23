@@ -17,7 +17,7 @@ Auto Life Logger is a local-first Chrome extension for tracking browsing habits,
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
 3. Click Load unpacked.
-4. Select this project folder (the directory containing `manifest.json`).
+4. Run `npm run package`, then select `dist/unpacked` for a release-like unpacked test, or select this source folder for development.
 
 ## Development
 
@@ -38,7 +38,7 @@ npm run package
 
 `npm run test:ui` runs the Playwright UI smoke suite. Install the browser first with `npx playwright install chromium`. On a Linux distribution without a Playwright-bundled Chromium build, drive your system Chrome instead: `PW_CHANNEL=chrome npm run test:ui`.
 
-`npm run package` validates the extension and creates a Chrome Web Store upload zip in `dist/`.
+`npm run package` validates the extension and creates a Chrome Web Store upload ZIP in `dist/`. The ZIP contains only the extension runtime files and icons—no source maps, tests, dependencies, secrets, or development assets.
 
 On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`, for example `npm.cmd run validate`.
 

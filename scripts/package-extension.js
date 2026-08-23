@@ -11,7 +11,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 
 const slug = packageJson.name || manifest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const version = manifest.version;
 const distDir = path.join(root, 'dist');
-const stageDir = path.join(distDir, `${slug}-${version}`);
+const stageDir = path.join(distDir, 'unpacked');
 const zipPath = path.join(distDir, `${slug}-${version}.zip`);
 
 const files = [
@@ -29,6 +29,7 @@ const files = [
   'onboarding.js',
   'styles.css',
   'icons/icon16.png',
+  'icons/icon32.png',
   'icons/icon48.png',
   'icons/icon128.png'
 ];
