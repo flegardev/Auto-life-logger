@@ -10,12 +10,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/flegardev/auto-life-logger.git"
+    "url": "https://github.com/flegardev/Auto-life-logger.git"
   },
   "bugs": {
-    "url": "https://github.com/flegardev/auto-life-logger/issues"
+    "url": "https://github.com/flegardev/Auto-life-logger/issues"
   },
-  "homepage": "https://github.com/flegardev/auto-life-logger#readme",
+  "homepage": "https://github.com/flegardev/Auto-life-logger#readme",
   "scripts": {
     "lint": "node scripts/validate-extension.js",
     "test": "npm run test:unit && npm run test:chrome && npm run test:ui",

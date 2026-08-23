@@ -29,7 +29,7 @@ Privacy-first Chrome extension (Manifest V3) for tracking web browsing habits, f
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/flegardev/auto-life-logger.git
+   git clone https://github.com/flegardev/Auto-life-logger.git
    ```
 
 2. Open Google Chrome and navigate to `chrome://extensions/`.
