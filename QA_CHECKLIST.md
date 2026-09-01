@@ -52,3 +52,4 @@ Use this checklist before shipping a release.
 - Confirm no remote favicon requests appear in DevTools Network.
 - Confirm no extension errors appear in the background service worker console.
 - Confirm local data deletion removes sessions, summaries, scores, patterns, and violations.
+- After deleting data during an active session, switch or close the tab and confirm the deleted session is not restored.

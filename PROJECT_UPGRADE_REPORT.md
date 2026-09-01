@@ -91,6 +91,8 @@ Supabase was not used by this project.
 
 ## Commands Run
 
+The command log below records the original repair session. For the current automated gate, use `npm run validate`; the active GitHub Actions workflow runs the same unit, unpacked-extension, and Playwright checks before packaging.
+
 - `git status --short --branch` - failed because this folder is not a git repository.
 - `npm.cmd run lint` - passed.
 - `npm.cmd run validate` - passed.
@@ -113,6 +115,6 @@ PASS.
 
 ## Remaining Recommended Improvements
 
-- Consider installing `@playwright/test` as a dev dependency if this repo should run UI smoke tests with a simple command on every machine.
-- Add a dedicated CI workflow for `npm run validate` and the Playwright smoke test.
+- Complete the manual browser and Chrome Web Store checks in `QA_CHECKLIST.md` before publishing a release.
+- Consider adding an automated accessibility scanner if the dependency-light extension grows more complex.
 - Consider moving repeated domain/settings helpers into a shared script if the plain MV3 architecture grows further.

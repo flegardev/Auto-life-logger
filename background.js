@@ -15,24 +15,50 @@
  */
 'use strict';
 
+let dataGeneration = 0;
+
 // ─── StorageQueue — resilient chrome.storage writes ──────────────────────────
 class StorageQueue {
   constructor() {
     this._pending = Promise.resolve();
   }
-  /** Queue a key/value write. MV3 service workers can suspend, so persist immediately. */
-  put(key, value) {
-    return this.now(key, value);
+  /** Queue a key/value write. Stale generations are discarded after a privacy reset. */
+  put(key, value, generation = dataGeneration) {
+    return this.now(key, value, generation);
   }
   /** Compatibility hook for older call sites. */
   flush() {
     return this._pending;
   }
-  /** Immediate single-key write (bypasses queue) */
-  async now(key, value) {
+  /** Queue a single-key write behind any in-flight storage operation. */
+  async now(key, value, generation = dataGeneration) {
+    return this.set({ [key]: value }, generation);
+  }
+  /** Queue a multi-key merge. */
+  async set(values, generation = dataGeneration) {
+    if (generation !== dataGeneration) return false;
     const write = this._pending
       .catch(() => {})
-      .then(() => chrome.storage.local.set({ [key]: value }));
+      .then(async () => {
+        if (generation !== dataGeneration) return false;
+        await chrome.storage.local.set(values);
+        return true;
+      });
+    this._pending = write.catch(e => console.warn('[ALL] Storage error:', e));
+    return write;
+  }
+  /** Clear all persisted data and install a fresh baseline as one ordered barrier. */
+  async replaceAll(values, generation = dataGeneration) {
+    if (generation !== dataGeneration) return false;
+    const write = this._pending
+      .catch(() => {})
+      .then(async () => {
+        if (generation !== dataGeneration) return false;
+        await chrome.storage.local.clear();
+        if (generation !== dataGeneration) return false;
+        await chrome.storage.local.set(values);
+        return true;
+      });
     this._pending = write.catch(e => console.warn('[ALL] Storage error:', e));
     return write;
   }
@@ -143,6 +169,7 @@ const ICON_URL           = 'icons/icon128.png';
 
 let currentSession = null;
 // { id, tabId, domain, url, title, startTime, date, hour, isDistraction, isProductive, context }
+let currentSessionGeneration = dataGeneration;
 
 let activeTabId     = null;
 let activeWindowId  = null;
@@ -298,7 +325,7 @@ async function getSettings() {
   return normalizeSettings(settings);
 }
 
-async function migrateSettingsIfNeeded() {
+async function migrateSettingsIfNeeded(generation = dataGeneration) {
   const { settings } = await get('settings');
   if (!settings || typeof settings !== 'object') return null;
   const currentVersion = Number(settings.siteListVersion) || 0;
@@ -309,7 +336,7 @@ async function migrateSettingsIfNeeded() {
     distractionSites: [...new Set([...normalizeDomainList(settings.distractionSites), ...DISTRACTION_SITES])],
     productiveSites: [...new Set([...normalizeDomainList(settings.productiveSites), ...PRODUCTIVE_SITES])]
   });
-  await Q.now('settings', migrated);
+  await Q.now('settings', migrated, generation);
   return migrated;
 }
 
@@ -342,14 +369,14 @@ async function getSessionsWithCurrent(dateKey = null) {
   }];
 }
 
-async function upsertSession(session) {
+async function upsertSession(session, generation = dataGeneration) {
   const { sessions = [] } = await get('sessions');
   const settings = await getSettings();
   const safeSessions = asArray(sessions).filter(s => s && typeof s === 'object');
   const idx = safeSessions.findIndex(s => s.id === session.id);
   if (idx >= 0) safeSessions[idx] = session; else safeSessions.push(session);
   const cutoff = Date.now() - settings.dataRetentionDays * 86400000;
-  await Q.put('sessions', safeSessions.filter(s => s.startTime > cutoff));
+  await Q.put('sessions', safeSessions.filter(s => s.startTime > cutoff), generation);
 }
 
 async function getGamification() {
@@ -376,9 +403,37 @@ function defaultGamification() {
   };
 }
 
-async function saveGamification(G) {
-  await Q.put('gamification', G);
+async function saveGamification(G, generation = dataGeneration) {
+  await Q.put('gamification', G, generation);
   return G;
+}
+
+function createInitialData() {
+  return {
+    settings: normalizeSettings(DEFAULT_SETTINGS),
+    sessions: [],
+    dailySummaries: {},
+    patternHistory: [],
+    interventionLog: [],
+    disciplineScores: {},
+    gamification: defaultGamification(),
+    strictViolations: {}
+  };
+}
+
+async function clearAllData() {
+  const generation = ++dataGeneration;
+
+  // Forget every in-memory trace before touching storage. Otherwise a later
+  // tab/window event can end the old session and recreate deleted history.
+  currentSession = null;
+  currentSessionGeneration = generation;
+  recentVisits = [];
+  warnCooldowns = {};
+  tempUnblocked.clear();
+
+  await Q.replaceAll(createInitialData(), generation);
+  return true;
 }
 
 async function getStrictViolations() {
@@ -399,13 +454,16 @@ async function getInterventionLog() {
 // ─── Session Lifecycle ────────────────────────────────────────────────────────
 
 async function startSession(tabId, url, title = '') {
+  const generation = dataGeneration;
   if (!isTrackable(url) || isIdle) return;
   const domain = getDomain(url);
   if (!domain) return;
 
   await endCurrentSession();
+  if (generation !== dataGeneration) return;
 
   const settings = await getSettings();
+  if (generation !== dataGeneration) return;
   if (isTrackingPaused(settings) || isNeverTracked(domain, settings)) return;
   const isDistraction = matchesDomain(domain, settings.distractionSites);
   const isProductive  = matchesDomain(domain, settings.productiveSites);
@@ -416,32 +474,35 @@ async function startSession(tabId, url, title = '') {
     startTime: Date.now(), date: getDateKey(), hour: new Date().getHours(),
     isDistraction, isProductive, context
   };
+  currentSessionGeneration = generation;
 
   recentVisits.push({ domain, ts: Date.now() });
 
   // Pattern + strict mode checks (async, non-blocking)
   Promise.all([
-    checkPatterns(domain, settings),
+    checkPatterns(domain, settings, generation),
     checkStrictMode(domain, settings)
   ]).catch(() => {});
 }
 
 async function endCurrentSession() {
   if (!currentSession) return;
+  const session = currentSession;
+  const generation = currentSessionGeneration;
+  currentSession = null;
   const endTime  = Date.now();
-  const duration = Math.round((endTime - currentSession.startTime) / 1000);
+  const duration = Math.round((endTime - session.startTime) / 1000);
   if (duration >= MIN_SESSION_SEC) {
     await upsertSession({
-      id: currentSession.id, domain: currentSession.domain, url: currentSession.url,
-      title: currentSession.title, startTime: currentSession.startTime, endTime, duration,
-      date: currentSession.date, hour: currentSession.hour,
-      isDistraction: currentSession.isDistraction, isProductive: currentSession.isProductive,
-      context: currentSession.context
-    });
+      id: session.id, domain: session.domain, url: session.url,
+      title: session.title, startTime: session.startTime, endTime, duration,
+      date: session.date, hour: session.hour,
+      isDistraction: session.isDistraction, isProductive: session.isProductive,
+      context: session.context
+    }, generation);
     // Flush immediately on session end so data is never lost
     await Q.flush();
   }
-  currentSession = null;
 }
 
 // ─── Strict Mode ──────────────────────────────────────────────────────────────
@@ -457,20 +518,22 @@ async function checkStrictMode(domain, settings) {
   }
 }
 
-async function handleIgnoredWarning(domain) {
+async function handleIgnoredWarning(domain, generation = dataGeneration) {
   const settings = await getSettings();
   if (!strictModeActiveNow(settings)) return;
 
   const violations = await getStrictViolations();
   violations[domain] = (violations[domain] || 0) + 1;
-  await Q.put('strictViolations', violations);
+  await Q.put('strictViolations', violations, generation);
+  if (generation !== dataGeneration) return;
 
   // Block domain if threshold reached
   const threshold = thresholdForDomain(domain, settings.strictMode.perSiteThresholds, settings.strictMode.threshold);
   if (violations[domain] >= threshold) {
     if (!settings.strictMode.blockedDomains.includes(domain)) {
       settings.strictMode.blockedDomains.push(domain);
-      await chrome.storage.local.set({ settings });
+      await Q.put('settings', settings, generation);
+      if (generation !== dataGeneration) return;
       // Notify
       chrome.notifications.create(`blocked-${domain}`, {
         type: 'basic', iconUrl: ICON_URL,
@@ -484,7 +547,7 @@ async function handleIgnoredWarning(domain) {
 
 // ─── Pattern Detection ────────────────────────────────────────────────────────
 
-async function checkPatterns(domain, settings) {
+async function checkPatterns(domain, settings, generation = dataGeneration) {
   const now      = Date.now();
   const cooldown = warnCooldowns[domain];
   if (cooldown && now - cooldown < WARNING_COOLDOWN) return;
@@ -492,12 +555,14 @@ async function checkPatterns(domain, settings) {
   const windowMs      = settings.loopDetectionWindowMins * 60 * 1000;
   recentVisits        = recentVisits.filter(v => now - v.ts < windowMs);
   const todaySessions = await getSessions(getDateKey());
+  if (generation !== dataGeneration) return;
 
-  const triggered = await runPatternChecks(domain, todaySessions, settings, now, windowMs);
+  const triggered = await runPatternChecks(domain, todaySessions, settings, now, windowMs, generation);
   if (triggered) warnCooldowns[domain] = now;
 }
 
-async function runPatternChecks(domain, todaySessions, settings, now, windowMs) {
+async function runPatternChecks(domain, todaySessions, settings, now, windowMs, generation = dataGeneration) {
+  if (generation !== dataGeneration) return false;
   const isDistraction = matchesDomain(domain, settings.distractionSites);
 
   // ── 1. Time Overrun ──────────────────────────────────────────────────────
@@ -506,7 +571,7 @@ async function runPatternChecks(domain, todaySessions, settings, now, windowMs) 
     if (Math.floor(totalSecs / 60) >= settings.warningThresholdMins) {
       const msg = `You've spent ${formatDur(totalSecs)} on ${domain} today. That's your limit.`;
       await fireIntervention(domain, 'time', msg, { minutes: Math.round(totalSecs/60) });
-      await appendPattern({ type: 'TIME_OVERRUN', domain, minutes: Math.round(totalSecs/60), ts: now, date: getDateKey() });
+      await appendPattern({ type: 'TIME_OVERRUN', domain, minutes: Math.round(totalSecs/60), ts: now, date: getDateKey() }, generation);
       return true;
     }
   }
@@ -516,7 +581,7 @@ async function runPatternChecks(domain, todaySessions, settings, now, windowMs) 
   if (domainVisits.length >= settings.loopDetectionVisits) {
     const msg = `Distraction loop: you've hit ${domain} ${domainVisits.length}× in ${settings.loopDetectionWindowMins} min.`;
     await fireIntervention(domain, 'loop', msg, { count: domainVisits.length });
-    await appendPattern({ type: 'DISTRACT_LOOP', domain, count: domainVisits.length, ts: now, date: getDateKey() });
+    await appendPattern({ type: 'DISTRACT_LOOP', domain, count: domainVisits.length, ts: now, date: getDateKey() }, generation);
     return true;
   }
 
@@ -528,7 +593,7 @@ async function runPatternChecks(domain, todaySessions, settings, now, windowMs) 
     if (prev?.isProductive && gapMs < 3 * 60000) {
       const msg = `You left ${prev.domain} and opened ${domain}. Don't break your flow!`;
       await fireIntervention(domain, 'rebound', msg, { from: prev.domain });
-      await appendPattern({ type: 'SOCIAL_REBOUND', from: prev.domain, to: domain, ts: now, date: getDateKey() });
+      await appendPattern({ type: 'SOCIAL_REBOUND', from: prev.domain, to: domain, ts: now, date: getDateKey() }, generation);
       return true;
     }
   }
@@ -539,7 +604,7 @@ async function runPatternChecks(domain, todaySessions, settings, now, windowMs) 
     if (shortVisits.length >= 5) {
       const msg = `${domain} is draining you in small doses — ${shortVisits.length} quick visits today.`;
       await fireIntervention(domain, 'leak', msg, { count: shortVisits.length });
-      await appendPattern({ type: 'TIME_LEAK', domain, count: shortVisits.length, ts: now, date: getDateKey() });
+      await appendPattern({ type: 'TIME_LEAK', domain, count: shortVisits.length, ts: now, date: getDateKey() }, generation);
       return true;
     }
   }
@@ -547,10 +612,10 @@ async function runPatternChecks(domain, todaySessions, settings, now, windowMs) 
   return false;
 }
 
-async function appendPattern(p) {
+async function appendPattern(p, generation = dataGeneration) {
   const { patternHistory = [] } = await get('patternHistory');
   const trimmed = [...patternHistory, p].slice(-500);
-  await Q.put('patternHistory', trimmed);
+  await Q.put('patternHistory', trimmed, generation);
 }
 
 // ─── Intervention Engine ──────────────────────────────────────────────────────
@@ -573,25 +638,26 @@ async function fireIntervention(domain, reason, message, meta = {}) {
   }
 }
 
-async function handleInterventionResponse(domain, reason, response) {
+async function handleInterventionResponse(domain, reason, response, generation = dataGeneration) {
   const entry = { domain, reason, response, ts: Date.now(), date: getDateKey() };
   const log   = await getInterventionLog();
-  await Q.put('interventionLog', [...log, entry].slice(-200));
+  await Q.put('interventionLog', [...log, entry].slice(-200), generation);
+  if (generation !== dataGeneration) return;
 
-  if (response === 'ignored') await handleIgnoredWarning(domain);
+  if (response === 'ignored') await handleIgnoredWarning(domain, generation);
 
   if (response === 'focused') {
     const G = await getGamification();
     G.totalFocusedResponses = (G.totalFocusedResponses || 0) + 1;
-    await saveGamification(G);
-    await checkAchievements({ totalFocusedResponses: G.totalFocusedResponses });
+    await saveGamification(G, generation);
+    await checkAchievements({ totalFocusedResponses: G.totalFocusedResponses }, generation);
   }
 }
 
 // ─── Discipline Score ─────────────────────────────────────────────────────────
 // 40 pts productive ratio + 30 pts low distraction + 20 pts no loops + 10 pts responses
 
-async function computeScore(dateKey) {
+async function computeScore(dateKey, generation = dataGeneration) {
   const sessions  = await getSessions(dateKey);
   const patterns  = (await getPatternHistory()).filter(p => p.date === dateKey);
   const log       = (await getInterventionLog()).filter(r => r.date === dateKey);
@@ -620,13 +686,13 @@ async function computeScore(dateKey) {
 
   const { disciplineScores = {} } = await get('disciplineScores');
   disciplineScores[dateKey] = obj;
-  await Q.put('disciplineScores', disciplineScores);
+  await Q.put('disciplineScores', disciplineScores, generation);
   return obj;
 }
 
 // ─── Gamification: Streaks ────────────────────────────────────────────────────
 
-async function updateStreak(dateKey, score) {
+async function updateStreak(dateKey, score, generation = dataGeneration) {
   const G = await getGamification();
 
   const isGood = score >= GOOD_DAY_THRESHOLD;
@@ -634,7 +700,7 @@ async function updateStreak(dateKey, score) {
 
   if (G.streak.lastDate === dateKey) {
     // Already updated today — only downgrade if it went bad
-    if (isBad) { G.streak.current = 0; await saveGamification(G); }
+    if (isBad) { G.streak.current = 0; await saveGamification(G, generation); }
     return G;
   }
 
@@ -649,13 +715,14 @@ async function updateStreak(dateKey, score) {
     G.streak.current = 0;
   }
   G.streak.lastDate = dateKey;
-  await saveGamification(G);
+  await saveGamification(G, generation);
   return G;
 }
 
 // ─── Gamification: Achievements ──────────────────────────────────────────────
 
-async function checkAchievements(ctx = {}) {
+async function checkAchievements(ctx = {}, generation = dataGeneration) {
+  if (generation !== dataGeneration) return [];
   const G        = await getGamification();
   const unlocked = new Set(G.achievements.map(a => a.id));
   const newOnes  = [];
@@ -715,7 +782,8 @@ async function checkAchievements(ctx = {}) {
     await try_('comeback', async () => ctx.daysSinceLastSession >= 3 && ctx.score >= 70);
   }
 
-  await saveGamification(G);
+  await saveGamification(G, generation);
+  if (generation !== dataGeneration) return [];
 
   // Notify + send toast for each new achievement
   for (const ach of newOnes) {
@@ -790,13 +858,14 @@ function generateInsight({ total, distract, productive, patterns, sessions, stre
 
 // ─── Daily Summary ────────────────────────────────────────────────────────────
 
-async function generateDailySummary(dateKey) {
+async function generateDailySummary(dateKey, generation = dataGeneration) {
   const sessions = await getSessions(dateKey);
   if (!sessions.length) return null;
 
   const settings  = await getSettings();
   const patterns  = (await getPatternHistory()).filter(p => p.date === dateKey);
-  const scoreObj  = await computeScore(dateKey);
+  const scoreObj  = await computeScore(dateKey, generation);
+  if (generation !== dataGeneration) return null;
 
   const domainMap = {};
   let total = 0, distract = 0, productive = 0;
@@ -820,7 +889,8 @@ async function generateDailySummary(dateKey) {
   const peakDistractHour = Object.entries(hourTotals).sort((a,b) => b[1]-a[1])[0]?.[0];
 
   // Streak + gamification
-  const G = await updateStreak(dateKey, scoreObj?.score ?? 0);
+  const G = await updateStreak(dateKey, scoreObj?.score ?? 0, generation);
+  if (generation !== dataGeneration) return null;
 
   // Check early bird
   const earlyHour = sessions.filter(s => s.isProductive).map(s => s.hour).sort()[0];
@@ -840,7 +910,8 @@ async function generateDailySummary(dateKey) {
     totalFocusedResponses: G.totalFocusedResponses,
     earlyProductiveHour:  earlyHour,
     daysSinceLastSession: daysSince
-  });
+  }, generation);
+  if (generation !== dataGeneration) return null;
 
   const insight = generateInsight({
     total, distract, productive, patterns, sessions,
@@ -860,7 +931,8 @@ async function generateDailySummary(dateKey) {
 
   const { dailySummaries = {} } = await get('dailySummaries');
   dailySummaries[dateKey] = summary;
-  await Q.put('dailySummaries', dailySummaries);
+  await Q.put('dailySummaries', dailySummaries, generation);
+  if (generation !== dataGeneration) return null;
 
   if (settings.notificationsEnabled && settings.dailySummaryEnabled) {
     const scoreStr = scoreObj ? ` · Score: ${scoreObj.score}/100` : '';
@@ -968,33 +1040,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     });
     case 'STRICT_UNBLOCK_TEMP':   return async_(async () => {
       if (!payload?.domain) return false;
+      const generation = dataGeneration;
       const settings = await getSettings();
+      if (generation !== dataGeneration) return false;
       if (settings.strictMode.hardLockUntilTomorrow) return false;
       tempUnblocked.set(payload.domain, Date.now() + settings.strictMode.bypassMinutes * 60000);
       return true;
     });
     case 'OPEN_DASHBOARD':        chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') }).catch(() => {}); reply({ ok: true }); return false;
-    case 'CLEAR_DATA':            return async_(async () => {
-      await chrome.storage.local.clear();
-      await chrome.storage.local.set({ settings: DEFAULT_SETTINGS, sessions: [], dailySummaries: {}, patternHistory: [], interventionLog: [], disciplineScores: {}, gamification: defaultGamification(), strictViolations: {} });
-      return true;
-    });
+    case 'CLEAR_DATA':            return async_(() => clearAllData());
     case 'ACTIVITY_PING': reply({ ok: true }); return false; // no-op, keeps content.js happy
     default: return false; // unknown types — no response needed
   }
 });
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  const generation = dataGeneration;
   const { settings } = await get('settings');
+  if (generation !== dataGeneration) return;
   if (!settings) {
-    await chrome.storage.local.set({
-      settings: DEFAULT_SETTINGS, sessions: [], dailySummaries: {},
-      patternHistory: [], interventionLog: [], disciplineScores: {},
-      gamification: defaultGamification(), strictViolations: {}
-    });
+    await Q.set(createInitialData(), generation);
   } else {
-    await migrateSettingsIfNeeded();
+    await migrateSettingsIfNeeded(generation);
   }
+  if (generation !== dataGeneration) return;
   if (reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') }).catch(() => {});
   }
@@ -1083,16 +1152,15 @@ chrome.alarms.onAlarm.addListener(async alarm => {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 async function boot() {
+  const generation = dataGeneration;
   const { settings } = await get('settings');
+  if (generation !== dataGeneration) return;
   if (!settings) {
-    await chrome.storage.local.set({
-      settings: DEFAULT_SETTINGS, sessions: [], dailySummaries: {},
-      patternHistory: [], interventionLog: [], disciplineScores: {},
-      gamification: null, strictViolations: {}
-    });
+    await Q.set(createInitialData(), generation);
   } else {
-    await migrateSettingsIfNeeded();
+    await migrateSettingsIfNeeded(generation);
   }
+  if (generation !== dataGeneration) return;
   // Start tracking current tab
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
