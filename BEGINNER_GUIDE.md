@@ -1,32 +1,46 @@
 # 🎓 Auto Life Logger — Beginner's Learning Guide
 
 ## What This Project Does
-**Auto Life Logger** is part of your official GitHub portfolio.
-Privacy-first Chrome extension (Manifest V3) for tracking web browsing habits, focus patterns, and site distraction limits.
+**Auto-life-logger** is a productivity and habit tracking Chrome Extension (Manifest V3) that tracks time spent on websites, detects user idle states, mines habit patterns, and enforces website blocking schedules.
 
 ---
 
-## Technologies & Architecture
-- **Category**: Browser Extensions & Habit Tracking
-- **Primary Tech Stack**: JavaScript (ES6), Chrome Extensions API (Manifest V3), Chart.js, HTML/CSS
-- **Difficulty Rating**: 3/10
-- **Main Entry Point**: \$(System.Collections.Hashtable.entry)\
+## 🗺️ Architecture Map
+
+```
+ENTRY POINT
+  │  (manifest.json & background.js Service Worker)
+  ▼
+EVENT LISTENERS & BROWSER APIS
+  │  ├── Active Tab Changes (chrome.tabs.onActivated)
+  │  ├── URL Updates (chrome.tabs.onUpdated)
+  │  ├── System Idle Detection (chrome.idle.onStateChanged)
+  │  └── Alarm Intervals (chrome.alarms.onAlarm)
+  ▼
+STORAGE QUEUE & METRICS ENGINE
+  │  (StorageQueue Write Serializer, Domain Aggregator, Productivity Scoring)
+  ▼
+CONTENT ENFORCEMENT & UI
+     ├── In-page Blocker Overlay (blocker.js)
+     └── Analytics Dashboard (dashboard.html, dashboard.js, Chart.js)
+```
 
 ---
 
-## Core Concepts You Can Learn From This Codebase
-Manifest V3 service workers, chrome.storage API, declarativeNetRequest rules, and content script injection.
+## 🎯 Core Files to Study First (Recommended Learning Order)
+
+1. [`background.js`](file:///C:/Users/tinif/repos/Auto-life-logger/background.js)
+   - **Why study first**: Explains Manifest V3 background service worker lifecycles, active tab tracking, async storage write queues, and idle state management.
+2. [`dashboard.js`](file:///C:/Users/tinif/repos/Auto-life-logger/dashboard.js)
+   - **Why study next**: Shows how to aggregate raw time-series browsing logs into daily/weekly Chart.js bar and doughnut visualizations.
+3. [`blocker.js`](file:///C:/Users/tinif/repos/Auto-life-logger/blocker.js)
+   - **Why study third**: Demonstrates DOM injection and full-screen blocking overlays to prevent access to distracting websites during focus hours.
 
 ---
 
-## How the Application Starts & Runs
-1. **Entry Point**: The application initiates execution at \$(System.Collections.Hashtable.entry)\.
-2. **Execution Lifecycle**: Inspect how modules, configuration, and dependencies are loaded into memory and how user interactions or network requests are dispatched.
+## 🛠️ How to Run & Verify
 
----
-
-## Suggested Step-by-Step Learning Order
-1. Open \$(System.Collections.Hashtable.entry)\ to trace the starting control flow.
-2. Inspect the configuration and environment setup files.
-3. Study the core services and domain models that implement the primary business logic.
-4. Review the user interface components or API controllers that deliver value to end users.
+1. **Load in Chrome**:
+   - Navigate to `chrome://extensions`
+   - Enable Developer Mode
+   - Load repository folder directly.
