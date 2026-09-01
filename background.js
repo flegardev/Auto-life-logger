@@ -1,13 +1,18 @@
-// background.js — Auto Life Logger v2 Service Worker
-// Architecture:
-//   StorageQueue  → resilient chrome.storage writes
-//   SessionMgr    → tab tracking, session lifecycle
-//   PatternEngine → 4 pattern types
-//   ScoreEngine   → discipline score 0-100
-//   GamifyEngine  → streaks + achievements
-//   InsightEngine → coaching insights
-//   StrictMode    → violation-based site blocking
-//   MessageRouter → popup/dashboard/content bridge
+/**
+ * 🎓 BEGINNER NOTE: Auto Life Logger Background Service Worker (Manifest V3)
+ * 
+ * In Manifest V3 Chrome Extensions, background scripts run as ephemeral Service Workers.
+ * They do not have access to the DOM or `window` object, but have full access to Chrome APIs.
+ * 
+ * Core Subsystems:
+ * 1. StorageQueue: Resiliently batches and queues asynchronous `chrome.storage.local` writes.
+ * 2. SessionMgr: Tracks active tab focus, URL transitions, and user idle state (`chrome.idle`).
+ * 3. PatternEngine: Discovers behavioral trends (deep work sessions vs distraction rabbit holes).
+ * 4. ScoreEngine: Calculates daily productivity and discipline scores (0–100).
+ * 5. GamifyEngine: Awards streaks, levels, and badges to encourage focus.
+ * 6. StrictMode: Enforces blocking overlay on distracting domains once time quotas expire.
+ * 7. MessageRouter: Bridges RPC requests from popup window, options page, and dashboard.
+ */
 'use strict';
 
 // ─── StorageQueue — resilient chrome.storage writes ──────────────────────────

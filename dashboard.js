@@ -1,4 +1,16 @@
-// dashboard.js — Auto Life Logger v2 full analytics dashboard
+/**
+ * 🎓 BEGINNER NOTE: Auto Life Logger Analytics Dashboard
+ * 
+ * This file powers the full-page analytics dashboard for Auto Life Logger.
+ * 
+ * Key Concepts:
+ * 1. Communication Bridge: Uses `chrome.runtime.sendMessage` to fetch aggregated
+ *    browsing statistics, discipline trends, and habit patterns from the background service worker.
+ * 2. Visual Charts (Chart.js): Visualizes daily time distributions (Productive vs Distracting hours),
+ *    hourly focus heatmaps, and category breakdowns.
+ * 3. Sanitization & Security: Functions like `esc()` sanitize raw web domain strings before injecting
+ *    them into HTML templates to prevent Cross-Site Scripting (XSS).
+ */
 'use strict';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
