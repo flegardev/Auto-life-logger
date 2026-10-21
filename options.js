@@ -213,7 +213,7 @@ document.querySelectorAll('[data-pause]').forEach(btn => btn.addEventListener('c
   document.getElementById('trackingPausedUntil').value = toDatetimeLocal(Date.now() + Number(btn.dataset.pause) * 60000);
 }));
 document.getElementById('exportSettingsBtn').addEventListener('click', () => downloadJson('auto-life-logger-settings.json', { settings: readSettings() }));
-document.getElementById('exportAllBtn').addEventListener('click', () => chrome.storage.local.get(null, data => downloadJson('auto-life-logger-backup.json', data)));
+document.getElementById('exportAllBtn').addEventListener('click', () => chrome.storage.local.get(null, data => downloadJson('auto-life-logger-backup.json', { format:'auto-life-logger', schemaVersion:1, exportedAt:new Date().toISOString(), data })));
 document.getElementById('resetSettingsBtn').addEventListener('click', async () => {
   if (!confirm('Reset settings to defaults? Your browsing history will remain.')) return;
   settings = await msg('RESET_SETTINGS') || DEFAULT_SETTINGS;
@@ -245,3 +245,14 @@ document.getElementById('importSettingsFile').addEventListener('change', async e
   settings = await msg('GET_SETTINGS') || DEFAULT_SETTINGS;
   render();
 })();
+
+
+document.getElementById('importBackupFile').addEventListener('change', async event => {
+  const file = event.target.files?.[0]; if (!file) return;
+  try {
+    if (file.size > 25 * 1024 * 1024) throw new Error('Backup exceeds the 25 MB limit.');
+    const result = await msg('IMPORT_SESSIONS', JSON.parse(await file.text()));
+    if (result) showStatus(`Restored ${result.imported} sessions; skipped ${result.skipped} existing, excluded or expired records. Settings and progress remain unchanged.`);
+  } catch (error) { showStatus(error.message || 'Could not read backup.'); }
+  finally { event.target.value = ''; }
+});

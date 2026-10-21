@@ -1,23 +1,14 @@
 # Changelog
 
-## Unreleased
+## 2.2.0 — candidate, 2026-10-21
 
-- Made data deletion an ordered privacy reset that also forgets the active session and temporary in-memory tracking state.
-- Added regression coverage for both delayed and concurrent session writes after deletion.
-- Added accessible names to settings toggles and form fields, plus polite live status regions.
-- Added repository and maintainer metadata and removed a machine-specific path from public documentation.
-- Expanded CI to run unit, unpacked-extension, and responsive Playwright checks before packaging.
+- Perform session read-modify-write inside the storage queue to avoid lost concurrent writes.
+- Persist minute checkpoints under stable IDs and deduplicate live totals.
+- Cancel stale session starts and avoid tracking an unfocused or idle browser after worker restart.
+- Preserve existing history when settings are missing during initialization.
+- Protect privileged analytics, import and deletion messages from content senders.
+- Add versioned backup export and validated, deduplicated session restore.
+- Refine the analytics hierarchy, readable daily insights and chart accessibility.
+- Replace platform-dependent ZIP generation with a deterministic Node ZIP writer.
 
-## 2.1.0 - Local Quality Pass
-
-- Added Chrome options page.
-- Added first-install onboarding.
-- Added tracking pause, never-track domains, and configurable data retention.
-- Added settings-only export/import and reset controls.
-- Added Strict Mode bypass duration, scheduled strict hours, no-bypass mode, and per-site thresholds.
-- Added weekly trend visualization.
-- Included live active-session duration in popup/dashboard totals.
-- Removed remote favicon lookups.
-- Added missing extension PNG icons.
-- Added validation and Chrome unpacked-load smoke scripts.
-- Added README, privacy policy, and manual QA checklist.
+No Store upload or submission has been performed.

@@ -1,7 +1,8 @@
 'use strict';
 
 const fs = require('fs');
-const os = require('os');
+const { deflateRawSync } = require('node:zlib');
+const { createHash } = require('node:crypto');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -51,19 +52,81 @@ function copyFile(rel) {
   fs.copyFileSync(source, target);
 }
 
-function zipWithPowerShell() {
-  const source = path.join(stageDir, '*');
-  run('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-Command',
-    `Compress-Archive -Path '${source.replace(/'/g, "''")}' -DestinationPath '${zipPath.replace(/'/g, "''")}' -Force`
-  ]);
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
 }
 
-function zipWithCli() {
-  run('zip', ['-r', zipPath, '.'], { cwd: stageDir });
+function buildZip(entries) {
+  const locals = [];
+  const central = [];
+  let offset = 0;
+  for (const { name, data } of entries) {
+    const nameBuf = Buffer.from(name.replace(/\\/g, '/'), 'utf8');
+    const crc = crc32(data);
+    const deflated = deflateRawSync(data, { level: 9 });
+    const useStore = deflated.length >= data.length;
+    const method = useStore ? 0 : 8;
+    const body = useStore ? data : deflated;
+
+    const lf = Buffer.alloc(30);
+    lf.writeUInt32LE(0x04034b50, 0); // local file header sig
+    lf.writeUInt16LE(20, 4); // version needed
+    lf.writeUInt16LE(0, 6); // flags
+    lf.writeUInt16LE(method, 8);
+    lf.writeUInt16LE(0, 10); // mod time
+    lf.writeUInt16LE(0x21, 12); // mod date (fixed 1980-01-01)
+    lf.writeUInt32LE(crc, 14);
+    lf.writeUInt32LE(body.length, 18);
+    lf.writeUInt32LE(data.length, 22);
+    lf.writeUInt16LE(nameBuf.length, 26);
+    lf.writeUInt16LE(0, 28);
+    locals.push(lf, nameBuf, body);
+
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0); // central dir sig
+    cd.writeUInt16LE(20, 4); // version made by
+    cd.writeUInt16LE(20, 6); // version needed
+    cd.writeUInt16LE(0, 8);
+    cd.writeUInt16LE(method, 10);
+    cd.writeUInt16LE(0, 12);
+    cd.writeUInt16LE(0x21, 14);
+    cd.writeUInt32LE(crc, 16);
+    cd.writeUInt32LE(body.length, 20);
+    cd.writeUInt32LE(data.length, 24);
+    cd.writeUInt16LE(nameBuf.length, 28);
+    cd.writeUInt16LE(0, 30);
+    cd.writeUInt16LE(0, 32);
+    cd.writeUInt16LE(0, 34);
+    cd.writeUInt16LE(0, 36);
+    cd.writeUInt32LE(0, 38); // external attrs
+    cd.writeUInt32LE(offset, 42);
+    central.push(cd, nameBuf);
+
+    offset += lf.length + nameBuf.length + body.length;
+  }
+  const centralBuf = Buffer.concat(central);
+  const localBuf = Buffer.concat(locals);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0, 4);
+  eocd.writeUInt16LE(0, 6);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(centralBuf.length, 12);
+  eocd.writeUInt32LE(localBuf.length, 16);
+  eocd.writeUInt16LE(0, 20);
+  return Buffer.concat([localBuf, centralBuf, eocd]);
 }
 
 if (manifest.version !== packageJson.version) {
@@ -78,7 +141,8 @@ fs.mkdirSync(stageDir, { recursive: true });
 
 for (const rel of files) copyFile(rel);
 
-if (os.platform() === 'win32') zipWithPowerShell();
-else zipWithCli();
+const zip = buildZip(files.map(name => ({ name, data:fs.readFileSync(path.join(stageDir,name)) })));
+fs.writeFileSync(zipPath,zip);
+console.log(`SHA256 ${createHash('sha256').update(zip).digest('hex')}`);
 
 console.log(`Created ${path.relative(root, zipPath)}`);
