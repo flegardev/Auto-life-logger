@@ -72,3 +72,6 @@ This policy may be updated when the extension changes. Updates will be published
 ## Contact
 
 For privacy questions, contact the developer through the support contact listed on the Chrome Web Store listing or the GitHub repository for this project.
+
+## Candidate 2.2.0
+Active sessions may be checkpointed once per minute to reduce loss on service-worker termination. Full JSON exports have an explicit format and schema version. Session restore validates every record before writing, merges new IDs and respects session retention and excluded domains; settings/progress are not overwritten.

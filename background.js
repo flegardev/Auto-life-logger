@@ -47,6 +47,31 @@ class StorageQueue {
     this._pending = write.catch(e => console.warn('[ALL] Storage error:', e));
     return write;
   }
+  /** Read-modify-write must happen inside the queue, not before it. */
+  update(key, updater, generation = dataGeneration) {
+    const write = this._pending.catch(() => {}).then(async () => {
+      if (generation !== dataGeneration) return false;
+      const stored = await chrome.storage.local.get(key);
+      if (generation !== dataGeneration) return false;
+      const value = updater(stored[key]);
+      await chrome.storage.local.set({ [key]: value });
+      return value;
+    });
+    this._pending = write.catch(e => console.warn('[ALL] Storage error:', e));
+    return write;
+  }
+  mergeMissing(defaults, generation = dataGeneration) {
+    const write = this._pending.catch(() => {}).then(async () => {
+      if (generation !== dataGeneration) return false;
+      const existing = await chrome.storage.local.get(null);
+      if (generation !== dataGeneration) return false;
+      const missing = Object.fromEntries(Object.entries(defaults).filter(([key]) => existing[key] === undefined));
+      await chrome.storage.local.set(missing);
+      return true;
+    });
+    this._pending = write.catch(e => console.warn('[ALL] Storage error:', e));
+    return write;
+  }
   /** Clear all persisted data and install a fresh baseline as one ordered barrier. */
   async replaceAll(values, generation = dataGeneration) {
     if (generation !== dataGeneration) return false;
@@ -352,8 +377,8 @@ async function getSessionsWithCurrent(dateKey = null) {
   if (dateKey && currentSession.date !== dateKey) return sessions;
   const duration = Math.max(0, Math.round((Date.now() - currentSession.startTime) / 1000));
   if (duration < MIN_SESSION_SEC) return sessions;
-  return [...sessions, {
-    id: `${currentSession.id}-live`,
+  return [...sessions.filter(s => s.id !== currentSession.id), {
+    id: currentSession.id,
     domain: currentSession.domain,
     url: currentSession.url,
     title: currentSession.title,
@@ -370,13 +395,16 @@ async function getSessionsWithCurrent(dateKey = null) {
 }
 
 async function upsertSession(session, generation = dataGeneration) {
-  const { sessions = [] } = await get('sessions');
   const settings = await getSettings();
-  const safeSessions = asArray(sessions).filter(s => s && typeof s === 'object');
-  const idx = safeSessions.findIndex(s => s.id === session.id);
-  if (idx >= 0) safeSessions[idx] = session; else safeSessions.push(session);
-  const cutoff = Date.now() - settings.dataRetentionDays * 86400000;
-  await Q.put('sessions', safeSessions.filter(s => s.startTime > cutoff), generation);
+  return Q.update('sessions', stored => {
+    const sessions = asArray(stored).filter(s => s && typeof s === 'object');
+    const idx = sessions.findIndex(s => s.id === session.id);
+    // An older checkpoint must never replace a later finalized session.
+    if (idx >= 0) { if ((sessions[idx].endTime || 0) <= session.endTime) sessions[idx] = session; }
+    else sessions.push(session);
+    const cutoff = Date.now() - settings.dataRetentionDays * 86400000;
+    return sessions.filter(s => s.startTime > cutoff);
+  }, generation);
 }
 
 async function getGamification() {
@@ -421,8 +449,13 @@ function createInitialData() {
   };
 }
 
+async function initializeMissingData(generation) {
+  await Q.mergeMissing(createInitialData(), generation);
+}
+
 async function clearAllData() {
   const generation = ++dataGeneration;
+  ++sessionRequest;
 
   // Forget every in-memory trace before touching storage. Otherwise a later
   // tab/window event can end the old session and recreate deleted history.
@@ -453,17 +486,19 @@ async function getInterventionLog() {
 
 // ─── Session Lifecycle ────────────────────────────────────────────────────────
 
+let sessionRequest = 0;
 async function startSession(tabId, url, title = '') {
+  if (currentSession?.tabId === tabId && currentSession.url === url) return;
+  const request = ++sessionRequest;
   const generation = dataGeneration;
+  await endCurrentSession(false);
+  if (generation !== dataGeneration || request !== sessionRequest) return;
   if (!isTrackable(url) || isIdle) return;
   const domain = getDomain(url);
   if (!domain) return;
 
-  await endCurrentSession();
-  if (generation !== dataGeneration) return;
-
   const settings = await getSettings();
-  if (generation !== dataGeneration) return;
+  if (generation !== dataGeneration || request !== sessionRequest || isIdle || !isWindowFocused) return;
   if (isTrackingPaused(settings) || isNeverTracked(domain, settings)) return;
   const isDistraction = matchesDomain(domain, settings.distractionSites);
   const isProductive  = matchesDomain(domain, settings.productiveSites);
@@ -485,7 +520,8 @@ async function startSession(tabId, url, title = '') {
   ]).catch(() => {});
 }
 
-async function endCurrentSession() {
+async function endCurrentSession(cancelPendingStart = true) {
+  if (cancelPendingStart) ++sessionRequest;
   if (!currentSession) return;
   const session = currentSession;
   const generation = currentSessionGeneration;
@@ -613,9 +649,7 @@ async function runPatternChecks(domain, todaySessions, settings, now, windowMs, 
 }
 
 async function appendPattern(p, generation = dataGeneration) {
-  const { patternHistory = [] } = await get('patternHistory');
-  const trimmed = [...patternHistory, p].slice(-500);
-  await Q.put('patternHistory', trimmed, generation);
+  await Q.update('patternHistory', value => [...asArray(value), p].slice(-500), generation);
 }
 
 // ─── Intervention Engine ──────────────────────────────────────────────────────
@@ -640,8 +674,7 @@ async function fireIntervention(domain, reason, message, meta = {}) {
 
 async function handleInterventionResponse(domain, reason, response, generation = dataGeneration) {
   const entry = { domain, reason, response, ts: Date.now(), date: getDateKey() };
-  const log   = await getInterventionLog();
-  await Q.put('interventionLog', [...log, entry].slice(-200), generation);
+  await Q.update('interventionLog', value => [...asArray(value), entry].slice(-200), generation);
   if (generation !== dataGeneration) return;
 
   if (response === 'ignored') await handleIgnoredWarning(domain, generation);
@@ -684,9 +717,7 @@ async function computeScore(dateKey, generation = dataGeneration) {
     stats: { total, distract, productive, loops, focused, ignored }
   };
 
-  const { disciplineScores = {} } = await get('disciplineScores');
-  disciplineScores[dateKey] = obj;
-  await Q.put('disciplineScores', disciplineScores, generation);
+  await Q.update('disciplineScores', value => ({ ...(value || {}), [dateKey]:obj }), generation);
   return obj;
 }
 
@@ -929,9 +960,7 @@ async function generateDailySummary(dateKey, generation = dataGeneration) {
     streak: G.streak.current, insight, generatedAt: Date.now()
   };
 
-  const { dailySummaries = {} } = await get('dailySummaries');
-  dailySummaries[dateKey] = summary;
-  await Q.put('dailySummaries', dailySummaries, generation);
+  await Q.update('dailySummaries', value => ({ ...(value || {}), [dateKey]:summary }), generation);
   if (generation !== dataGeneration) return null;
 
   if (settings.notificationsEnabled && settings.dailySummaryEnabled) {
@@ -1001,11 +1030,40 @@ async function buildTodayStats() {
   };
 }
 
+async function importSessions(payload) {
+  const data = payload?.format === 'auto-life-logger' ? payload.data : payload;
+  if (payload?.format && (payload.format !== 'auto-life-logger' || payload.schemaVersion !== 1)) throw new Error('Unsupported backup format');
+  if (!data || !Array.isArray(data.sessions) || data.sessions.length > 100000) throw new Error('Expected a backup with at most 100,000 sessions');
+  const safe = data.sessions.map(s => {
+    if (!s || typeof s.id !== 'string' || !s.id || s.id.length > 200 || typeof s.domain !== 'string' || !/^[a-z0-9.-]+$/i.test(s.domain) || s.domain.length > 253 || !Number.isFinite(s.startTime) || !Number.isFinite(s.endTime) || !Number.isFinite(s.duration) || s.duration < 0 || s.endTime < s.startTime || s.duration > (s.endTime - s.startTime) / 1000 + 2 || !/^\d{4}-\d{2}-\d{2}$/.test(s.date) || !Number.isInteger(s.hour) || s.hour < 0 || s.hour > 23) throw new Error('Backup contains an invalid session; nothing imported');
+    return { id:s.id, domain:s.domain.toLowerCase(), startTime:s.startTime, endTime:s.endTime, duration:s.duration, date:s.date, hour:s.hour, isProductive:s.isProductive === true, isDistraction:s.isDistraction === true, context:typeof s.context === 'string' ? s.context.slice(0,40) : 'other', title:typeof s.title === 'string' ? s.title.slice(0,120) : '', url:typeof s.url === 'string' && /^https?:\/\//.test(s.url) ? s.url.slice(0,4096) : '' };
+  });
+  const generation = dataGeneration;
+  const settings = await getSettings();
+  let imported = 0;
+  await Q.update('sessions', stored => {
+    const map = new Map(asArray(stored).filter(s => s?.id).map(s => [s.id, s]));
+    const cutoff = Date.now() - settings.dataRetentionDays * 86400000;
+    for (const s of safe) if (!map.has(s.id) && s.startTime > cutoff && !isNeverTracked(s.domain, settings)) { map.set(s.id,s); ++imported; }
+    return [...map.values()].sort((a,b) => a.startTime - b.startTime);
+  }, generation);
+  if (generation !== dataGeneration) throw new Error('Import cancelled by data reset');
+  return { imported, skipped: safe.length - imported };
+}
+
 // ─── Message Router ───────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (!msg || typeof msg !== 'object') return false;
   const { type, payload } = msg;
+  // Content scripts can request interventions, never analytics or destructive actions.
+  const contentSender = Boolean(_sender?.tab) && !String(_sender.url || _sender.tab.url || '').startsWith(chrome.runtime.getURL(''));
+  if (contentSender && !['ACTIVITY_PING', 'INTERVENTION_RESPONSE', 'STRICT_UNBLOCK_TEMP', 'OPEN_DASHBOARD'].includes(type)) {
+    reply({ ok: false, error: 'This action requires an extension page.' }); return false;
+  }
+  if (contentSender && payload?.domain !== undefined && payload.domain !== getDomain(_sender.tab.url)) {
+    reply({ ok: false, error: 'Domain does not match the sender.' }); return false;
+  }
 
   const async_ = fn => { fn().then(data => reply({ ok: true, data })).catch(e => reply({ ok: false, error: String(e) })); return true; };
 
@@ -1048,6 +1106,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       return true;
     });
     case 'OPEN_DASHBOARD':        chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') }).catch(() => {}); reply({ ok: true }); return false;
+    case 'IMPORT_SESSIONS':       return async_(() => importSessions(payload));
     case 'CLEAR_DATA':            return async_(() => clearAllData());
     case 'ACTIVITY_PING': reply({ ok: true }); return false; // no-op, keeps content.js happy
     default: return false; // unknown types — no response needed
@@ -1059,7 +1118,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   const { settings } = await get('settings');
   if (generation !== dataGeneration) return;
   if (!settings) {
-    await Q.set(createInitialData(), generation);
+    await initializeMissingData(generation);
   } else {
     await migrateSettingsIfNeeded(generation);
   }
@@ -1132,6 +1191,14 @@ chrome.alarms.create(ALARM_TICK, { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener(async alarm => {
   if (alarm.name === ALARM_TICK) {
+    // A stable ID allows checkpoints, live views and final writes to deduplicate.
+    const session = currentSession;
+    const generation = currentSessionGeneration;
+    if (session && isWindowFocused && !isIdle) {
+      const endTime = Date.now();
+      const duration = Math.max(0, Math.round((endTime - session.startTime) / 1000));
+      if (duration >= MIN_SESSION_SEC) await upsertSession({ ...session, endTime, duration }, generation);
+    }
     await Q.flush(); // wait for any in-flight storage writes
     // Prune visit window
     const { settings } = await get('settings');
@@ -1156,11 +1223,17 @@ async function boot() {
   const { settings } = await get('settings');
   if (generation !== dataGeneration) return;
   if (!settings) {
-    await Q.set(createInitialData(), generation);
+    await initializeMissingData(generation);
   } else {
     await migrateSettingsIfNeeded(generation);
   }
   if (generation !== dataGeneration) return;
+  // Do not count a background browser window as active work on worker restart.
+  try {
+    if (chrome.windows.getLastFocused) { const window = await chrome.windows.getLastFocused(); isWindowFocused = Boolean(window.focused); }
+    if (chrome.idle.queryState) isIdle = (await chrome.idle.queryState(60)) !== 'active';
+    if (!isWindowFocused || isIdle) return;
+  } catch { return; }
   // Start tracking current tab
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

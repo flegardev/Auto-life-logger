@@ -6,7 +6,7 @@
  * Key Concepts:
  * 1. Communication Bridge: Uses `chrome.runtime.sendMessage` to fetch aggregated
  *    browsing statistics, discipline trends, and habit patterns from the background service worker.
- * 2. Visual Charts (Chart.js): Visualizes daily time distributions (Productive vs Distracting hours),
+ * 2. Visual Charts (local Canvas API): Visualizes daily time distributions (Productive vs Distracting hours),
  *    hourly focus heatmaps, and category breakdowns.
  * 3. Sanitization & Security: Functions like `esc()` sanitize raw web domain strings before injecting
  *    them into HTML templates to prevent Cross-Site Scripting (XSS).
@@ -426,6 +426,10 @@ function renderOverview() {
   const score   = allScores[currentDk];
   const summary = allSummaries[currentDk];
 
+  document.getElementById('overviewInsight').textContent = a.total > 0 ? `${fmt(a.productive)} productive · ${fmt(a.distract)} distraction · ${a.sessions} sessions. Categories follow your site lists; scores describe browsing patterns, not work quality.` : 'Your day starts here. Activity appears after you browse an eligible site. Use Settings to exclude private domains or pause tracking.';
+  for (const [id, label] of [['cSites', 'Time by website'], ['cDonut', 'Productive, distracting and neutral time']]) {
+    const canvas = document.getElementById(id); canvas.setAttribute('role','img'); canvas.setAttribute('aria-label', `${label}: ${fmt(a.total)} total, ${fmt(a.productive)} productive, ${fmt(a.distract)} distraction.`);
+  }
   // Metrics
   document.getElementById('mvTotal').textContent   = fmt(a.total);
   document.getElementById('mvProd').textContent    = fmt(a.productive);

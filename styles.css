@@ -708,3 +708,21 @@ textarea.fi { width: 100%; resize: vertical; min-height: 90px; font-family: var(
     grid-template-columns: repeat(12, 1fr);
   }
 }
+
+
+/* Focus journal: calmer hierarchy, clearer data, accessible secondary text. */
+:root { --bg:#0e1718; --surface:#142123; --card:#192a2c; --card-hover:#203538; --text-muted:#a0b8b2; --text-secondary:#c1d4ce; --border:rgba(214,237,227,.16); --accent:#83dfb3; }
+body { background:var(--bg); }
+.btn-primary { background:var(--accent); box-shadow:none; }
+.metric-card { box-shadow:none; border-top:2px solid var(--border-hi); }
+.metric-val { font-variant-numeric:tabular-nums; letter-spacing:-.045em; }
+.panel { box-shadow:none; } .panel-hd { letter-spacing:.01em; }
+.page-title { letter-spacing:-.04em; } .dash-main { max-width:1600px; }
+.pu-header { padding-top:18px; padding-bottom:16px; } .pu-score { font-variant-numeric:tabular-nums; }
+:is(a,input,select,textarea):focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+
+.metric-row { grid-template-columns:repeat(6,minmax(0,1fr)); } canvas { display:block; max-width:100%; }
+.overview-insight { color:var(--text-secondary); border-left:3px solid var(--accent); padding:10px 14px; margin:0 0 20px; font-size:13px; background:var(--surface); }
+@media(max-width:1150px) { .metric-row { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:700px) { .metric-row { grid-template-columns:repeat(2,minmax(0,1fr)); } }
