@@ -135,7 +135,7 @@
     <!-- ── Discipline ─────────────────────────────────────────────────────── -->
     <div class="page" id="page-score">
       <div class="page-topbar">
-        <div><h1 class="page-title">Discipline Score</h1><div class="page-sub">0–100 daily focus quality</div></div>
+        <div><h1 class="page-title">Score details</h1><div class="page-sub">Rule-based estimate, not a measure of your productivity</div></div>
         <button class="btn-primary" id="btnRecompute">Recompute Today</button>
       </div>
       <div class="panel-row">
@@ -166,7 +166,7 @@
     <!-- ── Gamification ───────────────────────────────────────────────────── -->
     <div class="page" id="page-gamify">
       <div class="page-topbar">
-        <div><h1 class="page-title">Gamification</h1><div class="page-sub">Streaks &amp; achievements</div></div>
+        <div><h1 class="page-title">Milestones</h1><div class="page-sub">Streaks &amp; achievements</div></div>
       </div>
       <div class="panel-row">
         <div class="panel" style="flex:0 0 280px">
@@ -174,12 +174,12 @@
           <div class="streak-display">
             <div class="streak-fire">🔥</div>
             <div class="streak-number" id="gStreak">0</div>
-            <div class="streak-label">consecutive good days</div>
+            <div class="streak-label">consecutive days above the score threshold</div>
             <div class="streak-best" id="gStreakBest"></div>
           </div>
           <div class="streak-rules">
-            <div class="streak-rule">✅ Score ≥ 70 = Good day (streak +1)</div>
-            <div class="streak-rule">❌ Score &lt; 40 = Bad day (streak reset)</div>
+            <div class="streak-rule">Score ≥ 70: streak +1</div>
+            <div class="streak-rule">Score &lt; 40: streak reset</div>
             <div class="streak-rule">⏸ No data = Day skipped (no change)</div>
           </div>
         </div>

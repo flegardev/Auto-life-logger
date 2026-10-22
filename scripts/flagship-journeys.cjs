@@ -40,7 +40,8 @@ async function shot(page, name) {
   await page.waitForTimeout(350);
   await page.screenshot({
     path: path.join(out, name + '.png'),
-    fullPage: true
+    fullPage: true,
+    animations: 'disabled'
   });
 }
 async function measure(page) {
@@ -112,6 +113,8 @@ async function logger() {
         name: section,
         exact: true
       }).click();
+      await expect(page.getByRole('button', { name: section, exact: true })).toHaveAttribute('aria-current', 'page');
+      if (section === 'Sites') await expect(page.locator('#sitesTable')).toContainText('docs.example');
       await shot(page, `logger-${section.toLowerCase()}-after`);
     }
     await page.goto(`chrome-extension://${id}/popup.html`);
