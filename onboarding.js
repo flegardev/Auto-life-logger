@@ -70,6 +70,7 @@ function readNumber(id, fallback, min, max) {
 }
 
 async function finish() {
+  if (!settings) { showStatus('Settings are still loading. Please try again in a moment.'); return; }
   const next = {
     ...settings,
     distractionSites: lines('distractionSites'),
@@ -92,6 +93,12 @@ async function finish() {
 }
 
 document.getElementById('finishBtn').addEventListener('click', finish);
+document.getElementById('quietStartBtn').addEventListener('click', () => {
+  document.getElementById('notificationsEnabled').checked = false;
+  document.getElementById('interventionEnabled').checked = false;
+  document.getElementById('strictEnabled').checked = false;
+  finish();
+});
 document.getElementById('optionsBtn').addEventListener('click', () => location.href = chrome.runtime.getURL('options.html'));
 document.querySelectorAll('.toggle-row').forEach(row => {
   const input = row.querySelector('input');

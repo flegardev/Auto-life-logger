@@ -49,3 +49,9 @@ Test fixtures only; these screenshots do not represent real user activity.
 ![logger test fixture](docs/screenshots/logger-dashboard-after.png)
 
 ![logger test fixture](docs/screenshots/logger-popup-after.png)
+
+## Flagship redesign candidate 2.3.0
+
+Understand your browsing. Keep your history private. Calm light dashboard and popup; seven-day review; transparent productive-time goal; category explanation; quiet onboarding; improved chart contrast; overlapping category flags no longer double-count in overview.
+
+[Product and release limits](docs/flagship/PRODUCT.md) · [Research](docs/flagship/RESEARCH.md) · [Store material draft](docs/flagship/STORE_MATERIALS.md). This candidate has not been submitted or published.

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Auto Life Logger</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="flagship.css">
 </head>
 <body class="popup-body">
 <div class="popup-root">
@@ -30,7 +31,8 @@
   </div>
 
   <!-- ── Score + Streak ──────────────────────────────────────────────────── -->
-  <div class="pu-hero">
+  <section class="attention-intro"><p>Today, on this browser</p><h1>Make room for<br>what matters.</h1><p>See where your attention went.</p></section>
+<div hidden>  <div class="pu-hero">
     <div class="pu-score-wrap">
       <div class="pu-score" id="puScore">—</div>
       <div class="pu-score-label">Score</div>
@@ -46,19 +48,20 @@
     </div>
   </div>
 
+</div>
   <!-- ── Stats Grid ──────────────────────────────────────────────────────── -->
   <div class="pu-stats">
     <div class="pu-stat">
       <div class="pu-stat-v" id="psTotal">—</div>
-      <div class="pu-stat-l">Total</div>
+      <div class="pu-stat-l">Recorded time</div>
     </div>
     <div class="pu-stat is-danger">
       <div class="pu-stat-v" id="psDistract">—</div>
-      <div class="pu-stat-l">Distraction</div>
+      <div class="pu-stat-l">Labeled distracting</div>
     </div>
     <div class="pu-stat is-success">
       <div class="pu-stat-v" id="psProductive">—</div>
-      <div class="pu-stat-l">Productive</div>
+      <div class="pu-stat-l">Labeled productive</div>
     </div>
     <div class="pu-stat">
       <div class="pu-stat-v" id="psSites">—</div>
@@ -93,7 +96,7 @@
   </div>
 
   <!-- ── Footer ──────────────────────────────────────────────────────────── -->
-  <div class="pu-footer">
+  <p class="privacy-copy">Local history. Your categories. No account.</p><div class="pu-footer">
     <button class="btn-secondary" id="btnSummary">Summary</button>
     <button class="btn-primary"   id="btnDash2">Dashboard →</button>
   </div>

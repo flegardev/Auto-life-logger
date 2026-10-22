@@ -130,11 +130,11 @@ function readNumber(id, fallback, min, max) {
 // ─── Canvas Chart Engine ──────────────────────────────────────────────────────
 
 const C = {
-  accent:  '#6ecb93', accent2: '#49a7a1',
-  danger:  '#ff6868', success:  '#7ad08f',
-  warning: '#efb75a', muted:    '#26342b',
-  text:    '#a8b8aa', grid:     'rgba(223,239,224,0.05)',
-  overlay: '#101611'
+  accent:  '#315cab', accent2: '#347e89',
+  danger:  '#a43c48', success:  '#286b59',
+  warning: '#8a6119', muted:    '#d9e0e8',
+  text:    '#52647b', grid:     '#e4e9f0',
+  overlay: '#ffffff'
 };
 
 function prep(id, h) {
@@ -190,9 +190,9 @@ function hBarChart(id, items) {
 
     // Fill
     const g = ctx.createLinearGradient(padL, 0, padL+bW, 0);
-    if (it.isDistraction) { g.addColorStop(0,'#ff6868'); g.addColorStop(1,'#ff9a8c'); }
-    else if (it.isProductive) { g.addColorStop(0,'#6ecb93'); g.addColorStop(1,'#8ee6a9'); }
-    else { g.addColorStop(0,'#6ecb93'); g.addColorStop(1,'#49a7a1'); }
+    if (it.isDistraction) { g.addColorStop(0,C.danger); g.addColorStop(1,C.danger); }
+    else if (it.isProductive) { g.addColorStop(0,C.success); g.addColorStop(1,C.success); }
+    else { g.addColorStop(0,C.accent); g.addColorStop(1,C.accent); }
     ctx.fillStyle = g;
     rr(ctx, padL, y-barH/2, bW, barH, 3); ctx.fill();
 
@@ -202,7 +202,7 @@ function hBarChart(id, items) {
     ctx.fillText(it.label.length > 24 ? it.label.slice(0,22)+'…' : it.label, padL, y-barH/2-3);
 
     // Value
-    ctx.fillStyle = '#e8eaf6'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#202d42'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(it.val, padL+aW+6, y);
   }
 }
@@ -227,7 +227,7 @@ function donutChart(id, segs) {
   ctx.beginPath(); ctx.arc(cx,cy,ri,0,2*Math.PI);
   ctx.fillStyle = C.overlay; ctx.fill();
   // Center
-  ctx.fillStyle = '#e8eaf6'; ctx.font = 'bold 16px -apple-system,sans-serif';
+  ctx.fillStyle = '#202d42'; ctx.font = 'bold 16px -apple-system,sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(fmt(total), cx, cy-7);
   ctx.fillStyle = C.text; ctx.font = '10px -apple-system,sans-serif';
@@ -279,7 +279,7 @@ function vBarChart(id, items, maxVal, yLabelFn) {
     ctx.fillText(it.lbl||'', padL+i*gap+gap/2, padT+aH+5);
     // Value label
     if (it.vlbl) {
-      ctx.fillStyle = '#e8eaf6'; ctx.font = '9px -apple-system,sans-serif';
+      ctx.fillStyle = '#202d42'; ctx.font = '9px -apple-system,sans-serif';
       ctx.textBaseline = 'bottom';
       ctx.fillText(it.vlbl, padL+i*gap+gap/2, y-2);
     }
@@ -399,7 +399,7 @@ function agg(sessions) {
     dm[s.domain].duration += s.duration; dm[s.domain].visits++;
     total += s.duration;
     if (s.isDistraction) distract  += s.duration;
-    if (s.isProductive)  productive += s.duration;
+    else if (s.isProductive) productive += s.duration;
   }
   return { total, distract, productive, neutral: total-distract-productive,
            sites: Object.values(dm).sort((a,b)=>b.duration-a.duration),
@@ -423,6 +423,7 @@ function contextData(sessions) {
 function renderOverview() {
   const sessions = allSessions.filter(s => s.date === currentDk);
   const a = agg(sessions);
+  renderWeeklyReview();
   const score   = allScores[currentDk];
   const summary = allSummaries[currentDk];
 
@@ -450,9 +451,9 @@ function renderOverview() {
   // Charts
   hBarChart('cSites', a.sites.slice(0,8).map(s => ({ label:s.domain, v:s.duration, value:s.duration, val:fmt(s.duration), isDistraction:s.isDistraction, isProductive:s.isProductive })));
   donutChart('cDonut', [
-    ...(a.productive>0 ? [{ label:'Productive',  v:a.productive, color:'#7ad08f' }] : []),
-    ...(a.distract>0   ? [{ label:'Distraction', v:a.distract,   color:'#ff6868' }] : []),
-    ...(a.neutral>0    ? [{ label:'Neutral',      v:a.neutral,    color:'#2a2a42' }] : [])
+    ...(a.productive>0 ? [{ label:'Productive',  v:a.productive, color:C.success }] : []),
+    ...(a.distract>0   ? [{ label:'Distraction', v:a.distract,   color:C.danger }] : []),
+    ...(a.neutral>0    ? [{ label:'Neutral',      v:a.neutral,    color:C.muted }] : [])
   ]);
 
   // Heatmap
@@ -466,7 +467,7 @@ function renderOverview() {
     cell.className = 'hm-cell';
     cell.title = `${h}:00 — ${fmt(hours[h])}`;
     const alpha = hours[h] > 0 ? 0.08 + (hours[h]/maxH)*0.92 : 0;
-    cell.style.background = alpha > 0 ? `rgba(110,203,147,${alpha.toFixed(2)})` : 'rgba(38,52,43,0.72)';
+    cell.style.background = alpha > 0 ? `rgba(49,92,171,${alpha.toFixed(2)})` : '#e8edf4';
     hm.appendChild(cell);
     const lb = document.createElement('div');
     lb.className = 'hm-label';
@@ -501,6 +502,25 @@ function renderOverview() {
   const it  = document.getElementById('ovInsightText');
   if (summary?.insight) { ib.style.display='block'; it.textContent = summary.insight; }
   else { ib.style.display='none'; }
+}
+
+function renderWeeklyReview() {
+  const review = AttentionReview.summarize(allSessions, currentDk);
+  document.getElementById('reviewSummary').textContent = review.total ? `${fmt(review.total)} recorded across ${review.recordedDays} days` : 'A clearer picture starts with your first session.';
+  const bars = document.getElementById('reviewBars'); bars.replaceChildren();
+  const max = Math.max(1,...review.days.map(d => d.total));
+  for (const day of review.days) {
+    const column=document.createElement('div');column.className='review-day';
+    const amount=document.createElement('span');amount.textContent=fmt(day.total);
+    const bar=document.createElement('div');bar.className='review-bar';bar.style.height=`${Math.max(3,85*day.total/max)}px`;bar.setAttribute('aria-hidden','true');
+    const label=document.createElement('span');const parts=day.date.split('-').map(Number);label.textContent=new Date(parts[0],parts[1]-1,parts[2]).toLocaleDateString(undefined,{weekday:'short'});column.setAttribute('aria-label',`${day.date}: ${fmt(day.total)} recorded`);
+    column.append(amount,bar,label);bars.append(column);
+  }
+  chrome.storage.local.get({attentionDailyGoal:60}, data => {
+    if(chrome.runtime.lastError){document.getElementById('goalProgress').textContent='Could not load your goal. Try reopening the dashboard.';return;}
+    const minutes=Math.max(5,Math.min(720,Number(data.attentionDailyGoal)||60));document.getElementById('dailyGoal').value=minutes;
+    const today=review.days[6];document.getElementById('goalProgress').textContent=`${fmt(today.productive)} of ${minutes}m labeled productive on this date. ${Math.min(100,Math.round(today.productive/(minutes*60)*100))}% of your goal.`;
+  });
 }
 
 function renderSites() {
@@ -594,7 +614,7 @@ function renderScore() {
 
   const c = score?.components || {};
   const COMP = [
-    { key:'prodPts',  label:'Productive time',   max:40, color:'#7ad08f' },
+    { key:'prodPts',  label:'Productive time',   max:40, color:C.success },
     { key:'disPts',   label:'Low distraction',    max:30, color:'#49a7a1' },
     { key:'loopPts',  label:'No loops',           max:20, color:'#efb75a' },
     { key:'respPts',  label:'Intervention rate',  max:10, color:'#6ecb93' }
@@ -848,6 +868,13 @@ async function loadAll() {
 document.querySelectorAll('.nav-item').forEach(el =>
   el.addEventListener('click', () => navigate(el.dataset.page))
 );
+
+document.getElementById('reviewCategories').addEventListener('click',()=>navigate('settings'));
+document.getElementById('goalForm').addEventListener('submit',async event=>{
+  event.preventDefault(); const value=Number(document.getElementById('dailyGoal').value);
+  if(!Number.isFinite(value)||value<5||value>720)return;
+  try{await chrome.storage.local.set({attentionDailyGoal:Math.round(value)});renderWeeklyReview();}catch{document.getElementById('goalProgress').textContent='Could not save your goal. Your previous goal is unchanged.';}
+});
 
 document.querySelectorAll('.toggle-row').forEach(row => {
   const input = row.querySelector('input');

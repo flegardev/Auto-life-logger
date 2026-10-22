@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Auto Life Logger — Dashboard</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="flagship.css">
 </head>
 <body class="dash-body">
 <div class="dash-shell">
@@ -17,18 +18,18 @@
     </div>
 
     <div class="nav-group-label">Analytics</div>
-    <button type="button" class="nav-item active" data-page="overview" aria-current="page">  <span class="ni" aria-hidden="true">📊</span>Overview</button>
-    <button type="button" class="nav-item"        data-page="sites">     <span class="ni" aria-hidden="true">🌐</span>Sites</button>
-    <button type="button" class="nav-item"        data-page="patterns">  <span class="ni" aria-hidden="true">🔁</span>Patterns</button>
-    <button type="button" class="nav-item"        data-page="score">     <span class="ni" aria-hidden="true">🏆</span>Discipline</button>
+    <button type="button" class="nav-item active" data-page="overview" aria-current="page">  Overview</button>
+    <button type="button" class="nav-item"        data-page="sites">     Sites</button>
+    <button type="button" class="nav-item"        data-page="patterns">  Patterns</button>
+    <button type="button" class="nav-item"        data-page="score">     Score details</button>
 
     <div class="nav-group-label">Progress</div>
-    <button type="button" class="nav-item"        data-page="gamify">    <span class="ni" aria-hidden="true">🎮</span>Gamification</button>
-    <button type="button" class="nav-item"        data-page="summary">   <span class="ni" aria-hidden="true">📋</span>Reports</button>
-    <button type="button" class="nav-item"        data-page="history">   <span class="ni" aria-hidden="true">📅</span>History</button>
+    <button type="button" class="nav-item"        data-page="gamify">    Milestones</button>
+    <button type="button" class="nav-item"        data-page="summary">   Reports</button>
+    <button type="button" class="nav-item"        data-page="history">   History</button>
 
     <div class="nav-group-label">Config</div>
-    <button type="button" class="nav-item"        data-page="settings">  <span class="ni" aria-hidden="true">⚙️</span>Settings</button>
+    <button type="button" class="nav-item"        data-page="settings">  Settings</button>
 
     <!-- Live session footer -->
     <div class="nav-live" id="navLive" style="display:none">
@@ -47,7 +48,7 @@
     <div class="page active" id="page-overview">
       <div class="page-topbar">
         <div>
-          <h1 class="page-title">Overview</h1>
+          <h1 class="page-title">Overview</h1><p class="page-kicker">Your attention, understood.</p>
           <div class="page-sub" id="ovDate">Today</div>
         </div>
         <div class="topbar-right">
@@ -60,14 +61,14 @@
         </div>
       </div>
 
-      <p id="overviewInsight" class="overview-insight" role="status"></p>
+      <section class="review-workspace" aria-label="Weekly review"><div class="review-heading"><div><h2>This week, in perspective</h2><p>Seven days ending on the selected date. Browser activity only.</p></div><span class="privacy-mark">On this device</span></div><div id="reviewSummary" role="status">Loading your review…</div><div id="reviewBars" class="review-bars" aria-label="Daily recorded browsing"></div><div class="review-bottom"><form id="goalForm"><label for="dailyGoal">Daily intentional browsing goal</label><div><input id="dailyGoal" type="number" min="5" max="720" step="5" value="60" required><span>minutes</span><button class="btn-primary">Save goal</button></div><p id="goalProgress" role="status"></p></form><div><h3>What counts?</h3><p>Time labeled productive follows your domain rules, not the quality of your work. Idle time and other apps are not included.</p><button class="btn-secondary" type="button" id="reviewCategories">Review my categories</button></div></div></section><p id="overviewInsight" class="overview-insight" role="status"></p>
       <div class="metric-row" id="ovMetrics">
         <div class="metric-card accent"> <div class="metric-icon">⏱</div> <div class="metric-val" id="mvTotal">—</div>    <div class="metric-lbl">Total Time</div> </div>
         <div class="metric-card success"><div class="metric-icon">⚡</div> <div class="metric-val" id="mvProd">—</div>     <div class="metric-lbl">Productive</div> </div>
         <div class="metric-card danger"> <div class="metric-icon">🎮</div> <div class="metric-val" id="mvDistract">—</div> <div class="metric-lbl">Distraction</div></div>
         <div class="metric-card">       <div class="metric-icon">🌐</div> <div class="metric-val" id="mvSites">—</div>    <div class="metric-lbl">Sites</div>      </div>
         <div class="metric-card">       <div class="metric-icon">📌</div> <div class="metric-val" id="mvSess">—</div>     <div class="metric-lbl">Sessions</div>   </div>
-        <div class="metric-card score-mc"><div class="metric-icon">🏆</div><div class="metric-val" id="mvScore" style="color:var(--accent)">—</div><div class="metric-lbl">Score</div></div>
+        <div class="metric-card score-mc" hidden><div class="metric-icon">🏆</div><div class="metric-val" id="mvScore" style="color:var(--accent)">—</div><div class="metric-lbl">Score</div></div>
       </div>
 
       <div class="panel-row">
@@ -134,7 +135,7 @@
     <!-- ── Discipline ─────────────────────────────────────────────────────── -->
     <div class="page" id="page-score">
       <div class="page-topbar">
-        <div><h1 class="page-title">Discipline Score</h1><div class="page-sub">0–100 daily focus quality</div></div>
+        <div><h1 class="page-title">Score details</h1><div class="page-sub">Rule-based estimate, not a measure of your productivity</div></div>
         <button class="btn-primary" id="btnRecompute">Recompute Today</button>
       </div>
       <div class="panel-row">
@@ -165,7 +166,7 @@
     <!-- ── Gamification ───────────────────────────────────────────────────── -->
     <div class="page" id="page-gamify">
       <div class="page-topbar">
-        <div><h1 class="page-title">Gamification</h1><div class="page-sub">Streaks &amp; achievements</div></div>
+        <div><h1 class="page-title">Milestones</h1><div class="page-sub">Streaks &amp; achievements</div></div>
       </div>
       <div class="panel-row">
         <div class="panel" style="flex:0 0 280px">
@@ -173,12 +174,12 @@
           <div class="streak-display">
             <div class="streak-fire">🔥</div>
             <div class="streak-number" id="gStreak">0</div>
-            <div class="streak-label">consecutive good days</div>
+            <div class="streak-label">consecutive days above the score threshold</div>
             <div class="streak-best" id="gStreakBest"></div>
           </div>
           <div class="streak-rules">
-            <div class="streak-rule">✅ Score ≥ 70 = Good day (streak +1)</div>
-            <div class="streak-rule">❌ Score &lt; 40 = Bad day (streak reset)</div>
+            <div class="streak-rule">Score ≥ 70: streak +1</div>
+            <div class="streak-rule">Score &lt; 40: streak reset</div>
             <div class="streak-rule">⏸ No data = Day skipped (no change)</div>
           </div>
         </div>
@@ -306,7 +307,7 @@
         <div class="panel-hd">Privacy</div>
         <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
           🔐 <strong>All data is stored locally on your device</strong> using Chrome's built-in <code>chrome.storage.local</code> API.<br>
-          No data is ever sent to any server. No external API calls are made. There are no analytics, no telemetry, no tracking of any kind.<br>
+          Browsing activity is recorded locally for your reports. No browsing history is sent to a server, and there is no remote analytics or telemetry.<br>
           You can delete all data at any time using the button below.
         </div>
         <div style="margin-top:16px;display:flex;gap:10px">
@@ -322,6 +323,7 @@
 
   </main>
 </div>
+<script src="review.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

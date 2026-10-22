@@ -1,3 +1,5 @@
+> For the flagship candidate, see [the current release report](docs/flagship/RELEASE_REPORT.md). The record below describes the previous development cycle.
+
 # Verification on 2026-10-21
 
 Candidate 2.2.0, previous 2.1.1.
