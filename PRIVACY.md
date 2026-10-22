@@ -11,6 +11,7 @@ Auto Life Logger may collect and store the following information locally:
 - Website domains, page URLs, page titles, timestamps, and browsing session durations.
 - Daily summaries, weekly trends, focus patterns, discipline scores, achievements, and related productivity statistics.
 - User-created settings, including productive sites, distracting sites, never-track sites, Strict Mode settings, blocked domains, pause settings, and notification preferences.
+- Your optional daily intentional-browsing goal, stored locally and used to compare time labeled productive in the weekly review.
 - Intervention responses and Strict Mode violation counts used to provide focus reminders and blocking behavior.
 
 ## How the Information Is Used

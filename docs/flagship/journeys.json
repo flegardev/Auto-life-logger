@@ -1,0 +1,21 @@
+[
+  {
+    "product": "Auto Life Logger",
+    "passed": true,
+    "performance": {
+      "domContentLoadedMs": [
+        12,
+        12.300000000279397,
+        12.599999999627471,
+        14.100000000093132,
+        17.40000000037253
+      ],
+      "medianMs": 12.599999999627471,
+      "metrics": {
+        "Nodes": 3906,
+        "TaskDuration": 0.069657,
+        "JSHeapUsedSize": 5467232
+      }
+    }
+  }
+]

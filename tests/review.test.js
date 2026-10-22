@@ -1,0 +1,4 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');const {summarize}=require('../review');
+test('weekly review includes seven calendar dates and excludes out-of-range data',()=>{const result=summarize([{date:'2026-10-22',duration:60,isProductive:true},{date:'2026-10-16',duration:30,isDistraction:true},{date:'2026-10-15',duration:900},{date:'2026-10-22',duration:-20}], '2026-10-22');assert.equal(result.total,90);assert.equal(result.recordedDays,2);assert.equal(result.days[6].productive,60);assert.equal(result.days[0].distracting,30);});
+test('overlapping category flags are never double counted',()=>{const result=summarize([{date:'2026-10-22',duration:30,isProductive:true,isDistraction:true}],'2026-10-22');assert.equal(result.days[6].productive,0);assert.equal(result.days[6].distracting,30);});

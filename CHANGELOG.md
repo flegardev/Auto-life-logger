@@ -1,3 +1,9 @@
+# 2.3.0 — flagship redesign candidate
+
+Calm light dashboard and popup; seven-day review; transparent productive-time goal; category explanation; quiet onboarding; improved chart contrast; overlapping category flags no longer double-count in overview.
+
+Not published. Browser activity is not whole-device activity or work quality. Legacy category flags reflect capture-time rules. The published Store ID and package still need independent confirmation.
+
 # Changelog
 
 ## 2.2.0 — candidate, 2026-10-21

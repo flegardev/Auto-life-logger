@@ -29,6 +29,8 @@ const files = [
   'onboarding.html',
   'onboarding.js',
   'styles.css',
+  'flagship.css',
+  'review.js',
   'icons/icon16.png',
   'icons/icon32.png',
   'icons/icon48.png',
