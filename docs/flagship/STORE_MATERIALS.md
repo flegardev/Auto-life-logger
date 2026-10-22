@@ -6,11 +6,16 @@ Understand your browsing. Keep your history private.
 
 ## Description
 
-Calm light dashboard and popup; seven-day review; transparent productive-time goal; category explanation; quiet onboarding; improved chart contrast; overlapping category flags no longer double-count in overview.
+Spoznajte, katere spletne strani beležijo vaš čas brskanja, in si ustvarite mirnejši pregled svojih navad.
 
-Your data stays in this Chrome profile. No account or analytics service is required. Existing settings and records are retained on upgrade. Back up important data before changing browsers or removing an extension.
+• Oglejte si zabeleženi čas, strani in zgodovino
+• Preglejte sedemdnevni povzetek ter vzorce
+• Sami določite, katere domene so za vas produktivne ali moteče
+• Nastavite osebni dnevni cilj
+• Po želji vklopite opozorila in druge ukrepe
+• Izvozite, obnovite ali izbrišite lokalne podatke
 
-Browser activity is not whole-device activity or work quality. Legacy category flags reflect capture-time rules. The published Store ID and package still need independent confirmation.
+Dejavnost se beleži v tem brskalniku in se ne pošilja strežniku. Povzetek zajema brskanje, ne celotne uporabe računalnika. Oznake domen so vaše nastavitve in ne merijo kakovosti dela.
 
 ## Update notes
 
